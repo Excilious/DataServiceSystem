@@ -12,6 +12,6 @@ and make my code way better.
 Some of the code is not tested and may contain bugs that could break the system. Changes will be made but if there is any errors, please dont hesitate to enter them 
 within the issues panel above. I will *try* to fix any bugs that appear. 
 
-Please note that i am *not* a professional coder. I just do this as a hobby. There might be better ways to prevent this but thats the best i can do. ¯\_(ツ)_/¯
+Please note that i am *not* a professional coder. I just do this as a hobby. There might be better ways to code this but thats the best i can do. ¯\_(ツ)_/¯
 
 Version 1.0 - Created: 10/12/22 
