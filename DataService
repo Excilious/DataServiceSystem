@@ -1,8 +1,37 @@
+--[[
+  [Name]: DataService
+  [Date]: 10/12/22
+  [About]: This manages and saves/gets the users data. This would also send the data towards the newly joined user. You must enable API services and 
+  use RemoteEvent called GetDataAsync (Name can be changed within the variables below). This would also include a log system in which keeps track of every event.
+]]--
+
 local Service = {};
 local Logs = {}; --This can be used to keep track of any events; just in case of any rogue changes that can break the game.
 local DataStoreService = game:GetService("DataStoreService");
+local ProfileDatabase =  DataStoreService:GetDataStore("Profile"); --This would be where your profile would be stored within.
+local DataEvent = {};
+local EventName = "GetDataAsync" --This would be the remote event where the client would request a grab of the user data. You can fetch data during the runtime.
 
+Services.DataSaved = {};
+local SaveDataWhenAvailable = false; --This would save the data another time when the server is available.
+local BindNewCycles = false; --Newly added catagories would not be added within the users data. If added you may remove the subsection but the user will lose their data.
 local UserData = {} --This would be the place where we can store our data
+local DefaultData = { 
+
+--[[This would be the default data if the user is new. You can add subcatagories like adding a dictionary. 
+Keep in mind, the subcatagories you made would be saved per session cycle. New cycles would not be added if the BindNewCycles is not enabled.
+
+Please use the format:
+  [Catagory] = {
+    [Value within catagory] = Can be within a wide range of values (Dictionary and numerical/alphabetical values are more easier to use)
+  }
+]]--
+
+  ["Weapons"] = {
+    ["Owned"] = {};
+    ["Equipped"] = {};
+  }
+}
 
 function Service:FetchAvailableLogs(LogType)
   if LogType == "All" then
@@ -17,8 +46,89 @@ function Service:FetchAvailableLogs(LogType)
   end
 end
 
-Services.CreateUserData = function()
+Services.ReloadData = function(Player)
+  if (not BindNewCycles) then return end;
+  for Subsection,Values in pairs(DefaultData) do
+    if UserData[Player.Name][Subsection] == nil then
+      UserData[Player.Name][Subsection] = Values;
+    end
+  end
+end
+
+Services.CreateUserData = function(Player)
+  UserData[Player.Name] = {};
+  if (DataEvent[Player.Name] == nil) then
+    DataEvent[Player.Name] = true;
+    local NewProfile = nil;
+    local Success,Responce = pcall(function()
+        NewProfile = ProfileDatabase:GetAsync(Player.Name);
+    end)
+    if (not Success) then
+      print(Responce);
+      table.insert({
+        EventType = "Error";
+        ResponceMessage = Responce;
+        TimeRecorded = os.time();
+      }); --This would push an error event towards the log that we created.
+    elseif (Profile == {} or Profile == nil) then
+      UserData[Player.Name] = DefaultData -- The player is new
+      table.insert({
+        EventType = "Notification";
+        ResponceMessage = "New-User-Added";
+        TimeRecorded = os.time();
+      });
+    elseif Profile then
+      UserData[Player.Name] = Profile;
+      table.insert({
+        EventType = "Notification";
+        ResponceMessage = "Data-Created";
+        TimeRecorded = os.time();
+      })
+    end
+  end
+  if BindNewCycles then
+    Services.ReloadData(Player);
+  end
+end
+
+Services.SaveData = function(Player)
+  local ServerAttempts = 10; 
+  --[[ This would the amount of attempts the server would do to try and save the users data. If the number is reached. The data will not be saved. You may
+  add a notification towards the client in which tells the user that the data cannot be saved. If the configuation "SaveDataWhenAvailable" is enabled then the
+  server would attempt to save the data when the roblox dataservers are available ]]--
   
+  spawn(function() --This would yield and complete the process of saving data. This is in case of loads of people leaving at the same time (server overload)
+    if Services.DataSaved[Player.Name] == nil then
+      Services.DataSaved[Player.Name] = true;
+      local Success,Responce = pcall(function()
+        ProfileDatabase:SetAsync(Player.UserId, UserData[Player.Name]);
+      end)
+      if not Success then
+        local RecoverySuccess = false;
+        repeat
+          local Success,Responce = pcall(function()
+            ProfileDatabase:SetAsync(Player.UserId, UserData[Player.Name]);
+          end)
+          if Success then
+            RecoverySuccess = true;
+          else
+            ServerAttempts -= 1;
+          end
+          if ServerAttempts <= 0 then
+            print("Server cannot save ..Player.Name.."'s data. Please try again later");
+            table.insert(Logs,{
+              EventType = "Error";
+              ResponceMessage = Responce;
+              TimeRecorded = os.time();
+              --You can add a remoteevent in which would notify the user that the server cannot save the data here. (If you want)
+            });
+            break
+          end
+        until RecoverySuccess
+      end
+      Services.DataSaved[Player.Name] = nil;
+    end
+  end)
 end
 
 return Service;
