@@ -1,0 +1,24 @@
+local Service = {};
+local Logs = {}; --This can be used to keep track of any events; just in case of any rogue changes that can break the game.
+local DataStoreService = game:GetService("DataStoreService");
+
+local UserData = {} --This would be the place where we can store our data
+
+function Service:FetchAvailableLogs(LogType)
+  if LogType == "All" then
+    return Logs;
+  else
+    local TempLogs = {};
+    for _,idata in pairs(Logs) do
+      if idata.EventType == LogType then
+          table.insert(TempLogs,idata);
+      end
+    end
+  end
+end
+
+Services.CreateUserData = function()
+  
+end
+
+return Service;
